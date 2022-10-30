@@ -8,6 +8,7 @@ pub struct AssetsGroup<'a> {
 #[derive(Debug, Deserialize)]
 #[allow(missing_docs)]
 pub struct Asset {
+    pub is_blueprint_copy: Option<bool>,
     pub is_singleton: bool,
     pub item_id: u64,
     pub location_flag: String,
@@ -46,7 +47,8 @@ impl<'a> AssetsGroup<'a> {
         "get_characters_character_id_assets",
         RequestType::Authenticated,
         Vec<Asset>,
-        (character_id: u64) => "{character_id}"
+        (character_id: u64) => "{character_id}";
+        (page: i32) => "page"
     );
 
     api_post!(

@@ -130,14 +130,9 @@ impl Esi {
     /// # }
     pub async fn update_spec(&mut self) -> EsiResult<()> {
         debug!("Updating spec with version {}", self.version);
-        let resp = self
-            .client
-            .get(&format!(
-                "{}{}{}",
-                SPEC_URL_START, self.version, SPEC_URL_END
-            ))
-            .send()
-            .await?;
+        let url = format!("{}{}{}", SPEC_URL_START, self.version, SPEC_URL_END);
+        println!("spec url: {}", &url);
+        let resp = self.client.get(&url).send().await?;
         if !resp.status().is_success() {
             error!("Got status {} when requesting spec", resp.status());
             return Err(EsiError::InvalidStatusCode(resp.status().as_u16()));
@@ -297,8 +292,8 @@ impl Esi {
         query: Option<&[(&str, &str)]>,
         body: Option<&str>,
     ) -> EsiResult<T> {
-        debug!(
-            "Making {} request to {:?}{} with query {:?}",
+        println!(
+            "Making {} request to {:?} {} with query {:?}",
             method, request_type, endpoint, query
         );
         if request_type == RequestType::Authenticated && self.access_token.is_none() {
@@ -323,12 +318,15 @@ impl Esi {
         };
         let url = format!(
             "{}{}",
-            match request_type {
-                RequestType::Public => BASE_URL,
-                RequestType::Authenticated => OAUTH_URL,
+            match endpoint {
+                "verify" => OAUTH_URL,
+                _ => BASE_URL,
             },
             endpoint
         );
+
+        println!("query url: {}", &url);
+        println!("headers: {:?}", headers);
         let mut req_builder = self
             .client
             .request(Method::from_str(method)?, &url)
@@ -341,13 +339,15 @@ impl Esi {
         let req = req_builder.build()?;
         let resp = self.client.execute(req).await?;
         if !resp.status().is_success() {
-            error!(
+            println!(
                 "Got status {} when requesting data from {}",
                 resp.status(),
                 url
             );
             return Err(EsiError::InvalidStatusCode(resp.status().as_u16()));
         }
+
+        Modify this function to either (a) iterate over pages based on header that reports how many pages, or (b) return a value which includes a pagecount so that other functions calling this know how often they should repeat the call
         let data: T = resp.json().await?;
         Ok(data)
     }
@@ -411,6 +411,7 @@ impl Esi {
     /// let endpoint = esi.get_endpoint_for_op_id("get_alliances_alliance_id_contacts_labels").unwrap();
     /// ```
     pub fn get_endpoint_for_op_id(&self, op_id: &str) -> EsiResult<String> {
+        println!("op_id: {}.  spec is empty: {}", op_id, self.spec.is_none());
         let data = self
             .spec
             .as_ref()
